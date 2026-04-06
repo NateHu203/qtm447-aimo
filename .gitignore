@@ -205,3 +205,24 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Model weights (never commit)
+*.pth
+*.bin
+*.safetensors
+*.gguf
+*.pt
+
+# Project data and checkpoints
+data/raw/
+data/processed/
+checkpoints/
+
+# WandB
+wandb/
+
+# MacOS
+.DS_Store
+
+.vscode/
+.claude/
