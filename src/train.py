@@ -6,35 +6,50 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sys
-import wandb
+
 from dotenv import load_dotenv
-from transformers import DataCollatorForSeq2Seq
-from trl import SFTTrainer, SFTConfig
+from datasets import Dataset
+from trl import SFTTrainer, SFTConfig, DataCollatorForCompletionOnlyLM
 
 sys.path.insert(0, os.path.dirname(__file__))
 from model import load_config, load_model_and_tokenizer, apply_lora
-from dataset import MathDataset
+from dataset import PROMPT_TEMPLATE
 
 load_dotenv()
+
+RESPONSE_TEMPLATE = "\n</think>\n"
+
+
+def load_jsonl_as_hf_dataset(path: str) -> Dataset:
+    records = []
+    with open(path) as f:
+        for line in f:
+            ex = json.loads(line)
+            # Combine prompt + solution into a single "text" field
+            text = PROMPT_TEMPLATE.format(problem=ex["problem"]) + " " + ex["solution"]
+            records.append({"text": text, "answer": ex["answer"]})
+    return Dataset.from_list(records)
 
 
 def main(config_path: str):
     config = load_config(config_path)
     train_cfg = config["training"]
 
-    # Use Drive path in Colab, local checkpoints otherwise
     output_dir = os.environ.get("CHECKPOINT_DIR", train_cfg["output_dir"])
 
     model, tokenizer = load_model_and_tokenizer(config)
     model = apply_lora(model, config)
 
-    train_dataset = MathDataset(
-        config["data"]["train_path"], tokenizer, train_cfg["max_seq_len"]
-    )
-    val_dataset = MathDataset(
-        config["data"]["val_path"], tokenizer, train_cfg["max_seq_len"]
+    train_dataset = load_jsonl_as_hf_dataset(config["data"]["train_path"])
+    val_dataset = load_jsonl_as_hf_dataset(config["data"]["val_path"])
+
+    # Only compute loss on the solution (after "Solution:" in the prompt)
+    collator = DataCollatorForCompletionOnlyLM(
+        response_template="Solution:",
+        tokenizer=tokenizer,
     )
 
     training_args = SFTConfig(
@@ -58,6 +73,8 @@ def main(config_path: str):
         dataloader_num_workers=train_cfg.get("dataloader_num_workers", 0),
         load_best_model_at_end=True,
         packing=False,
+        dataset_text_field="text",
+        max_seq_length=train_cfg["max_seq_len"],
     )
 
     trainer = SFTTrainer(
@@ -65,15 +82,14 @@ def main(config_path: str):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        data_collator=DataCollatorForSeq2Seq(tokenizer, pad_to_multiple_of=8),
-        tokenizer=tokenizer,
+        data_collator=collator,
+        processing_class=tokenizer,
     )
 
     trainer.train(
         resume_from_checkpoint=output_dir if os.path.exists(output_dir) else None
     )
 
-    # Save final LoRA adapter to Drive (or local)
     model.save_pretrained(os.path.join(output_dir, "lora-final"))
     tokenizer.save_pretrained(os.path.join(output_dir, "lora-final"))
     print(f"Saved adapter to {output_dir}/lora-final")
