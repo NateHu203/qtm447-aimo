@@ -74,12 +74,13 @@ def main():
     parser.add_argument("--config", required=True)
     parser.add_argument("--data_path", required=True)
     parser.add_argument("--n_samples", type=int, default=1)
+    parser.add_argument("--quantize", action="store_true", help="Load in 4-bit (use on T4/low VRAM)")
     args = parser.parse_args()
 
     config = load_config(args.config)
     # Override config model name if model_path looks like a HF model ID or local dir
     config["model"]["name"] = args.model_path
-    base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=True)
+    base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=args.quantize)
 
     # Only wrap with PEFT if the path has an adapter_config.json (i.e. it's a LoRA adapter)
     adapter_cfg = os.path.join(args.model_path, "adapter_config.json")
