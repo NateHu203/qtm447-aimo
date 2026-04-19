@@ -5,8 +5,7 @@
 set -e
 
 echo "==> Installing dependencies..."
-pip install -q uv
-uv sync --active
+pip install -q -r requirements-colab.txt
 
 echo "==> Pulling latest code..."
 git pull origin main

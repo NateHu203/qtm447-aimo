@@ -1,0 +1,12 @@
+transformers==5.5.0
+peft==0.18.1
+trl==1.0.0
+bitsandbytes==0.49.2
+accelerate==1.13.0
+datasets==4.8.4
+wandb==0.25.1
+python-dotenv==1.2.2
+sympy==1.14.0
+pyyaml==6.0.3
+tqdm==4.67.3
+pandas==3.0.0
