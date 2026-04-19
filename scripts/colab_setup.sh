@@ -5,7 +5,8 @@
 set -e
 
 echo "==> Installing dependencies..."
-pip install -q transformers peft trl bitsandbytes accelerate datasets wandb python-dotenv sympy pyyaml tqdm
+pip install -q uv
+uv sync --system
 
 echo "==> Pulling latest code..."
 git pull origin main

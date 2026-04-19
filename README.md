@@ -65,27 +65,70 @@ In Cursor/VSCode, select the interpreter at:
 
 ---
 
-## Google Colab Setup (First Time)
+## Google Colab — First Time Only
 
-Run these cells at the top of your Colab notebook the **first time only**:
+> Only run this once. After the repo is cloned to `/content/qtm447-aimo`, future sessions just pull.
 
 ```python
-# Cell 1 — Mount Drive
+# 1. Mount Drive
 from google.colab import drive
 drive.mount('/content/drive')
-
-# Cell 2 — Clone the repo
-!git clone https://github.com/YOUR_USERNAME/qtm447-aimo.git
-%cd qtm447-aimo
-
-# Cell 3 — Bootstrap environment
-!bash scripts/colab_setup.sh
-
-# Cell 4 — Create your .env with tokens
-%%writefile .env
-HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx
-WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxx
 ```
+
+```python
+# 2. Read GitHub token from your Drive .env
+token = open('/content/drive/MyDrive/AIMO/.env').read().split('GITHUB_TOKEN=')[1].split()[0]
+```
+
+```python
+# 3. Clone the private repo using the token
+!git clone https://{token}@github.com/YOUR_USERNAME/qtm447-aimo.git /content/qtm447-aimo
+%cd /content/qtm447-aimo
+```
+
+```python
+# 4. Bootstrap (installs deps, symlinks Drive folders)
+!bash scripts/colab_setup.sh
+```
+
+```python
+# 5. Copy secrets into project
+!cp /content/drive/MyDrive/AIMO/.env /content/qtm447-aimo/.env
+```
+
+---
+
+## Google Colab — Every Session After That
+
+> `/content/` resets when a session ends. The repo is gone, but Drive (checkpoints, data) is not.
+
+```python
+# 1. Mount Drive
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```python
+# 2. Re-clone and pull latest code
+token = open('/content/drive/MyDrive/AIMO/.env').read().split('GITHUB_TOKEN=')[1].split()[0]
+!git clone https://{token}@github.com/YOUR_USERNAME/qtm447-aimo.git /content/qtm447-aimo
+%cd /content/qtm447-aimo
+!git remote set-url origin https://{token}@github.com/YOUR_USERNAME/qtm447-aimo.git
+```
+
+```python
+# 3. Bootstrap + restore secrets
+!bash scripts/colab_setup.sh
+!cp /content/drive/MyDrive/AIMO/.env .env
+```
+
+Then run training:
+
+```python
+!python src/train.py --config configs/sft_7b.yaml
+```
+
+Checkpoints auto-save to `MyDrive/AIMO/checkpoints/` every 100 steps via the symlink in `colab_setup.sh`.
 
 ---
 
@@ -97,29 +140,17 @@ WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxx
 Edit code  →  git add  →  git commit  →  git push
 ```
 
-You do **not** need a GPU locally. Just write and test code structure, edit configs, update notebooks.
+You do **not** need a GPU locally. Edit configs, write src/ files, update notebooks — then push.
 
-### On Colab (training / eval)
+### What lives where
 
-Every new session, run:
-
-```python
-# Cell 1 — Mount Drive + pull latest code
-from google.colab import drive
-drive.mount('/content/drive')
-
-%cd /content/qtm447-aimo
-!git pull origin main
-!bash scripts/colab_setup.sh
-```
-
-Then run training:
-
-```python
-!python src/train.py --config configs/sft_7b.yaml
-```
-
-Checkpoints auto-save to `Google Drive/AIMO/checkpoints/` every 100 steps via the symlink created by `colab_setup.sh`.
+| Location | What's stored | Persists? |
+|---|---|---|
+| `/content/qtm447-aimo/` | Code (re-cloned each session) | No — ephemeral |
+| `MyDrive/AIMO/checkpoints/` | LoRA adapter weights | Yes — Drive |
+| `MyDrive/AIMO/data/processed/` | Tokenized JSONL datasets | Yes — Drive |
+| `MyDrive/AIMO/.env` | All secrets/tokens | Yes — Drive |
+| GitHub | Source code | Yes — git |
 
 ### Syncing results back
 
