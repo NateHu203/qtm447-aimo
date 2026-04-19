@@ -93,6 +93,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--max_new_tokens", type=int, default=512)
     parser.add_argument("--quantize", action="store_true", help="Load in 4-bit (use on T4/low VRAM)")
+    parser.add_argument("--output", default=None, help="Path to save results JSON")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -109,7 +110,22 @@ def main():
 
     model.eval()
 
-    evaluate(model, tokenizer, args.data_path, n_samples=args.n_samples, max_new_tokens=args.max_new_tokens, batch_size=args.batch_size)
+    accuracy = evaluate(model, tokenizer, args.data_path, n_samples=args.n_samples, max_new_tokens=args.max_new_tokens, batch_size=args.batch_size)
+
+    if args.output:
+        import datetime
+        result = {
+            "model_path": args.model_path,
+            "data_path": args.data_path,
+            "n_samples": args.n_samples,
+            "max_new_tokens": args.max_new_tokens,
+            "accuracy": accuracy,
+            "timestamp": datetime.datetime.now().isoformat(),
+        }
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        with open(args.output, "w") as f:
+            json.dump(result, f, indent=2)
+        print(f"Results saved to {args.output}")
 
 
 if __name__ == "__main__":
