@@ -17,21 +17,22 @@ lora:
 
 training:
   output_dir: ./checkpoints
-  max_seq_len: 4096
-  per_device_train_batch_size: 4
-  gradient_accumulation_steps: 8   # effective batch = 32
+  max_seq_len: 2048
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 16  # effective batch = 32
   learning_rate: 2.0e-4
   num_train_epochs: 3
-  warmup_ratio: 0.03
+  warmup_steps: 100
   lr_scheduler_type: cosine
   fp16: true
+  gradient_checkpointing: true
   logging_steps: 10
   save_strategy: steps
   save_steps: 100
   save_total_limit: 3
   report_to: wandb
   run_name: qwen2.5-math-7b-lora-r64
-  dataloader_num_workers: 4
+  dataloader_num_workers: 2
 
 data:
   train_path: ./data/processed/train.jsonl

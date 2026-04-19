@@ -63,6 +63,7 @@ def main(config_path: str):
         lr_scheduler_type=train_cfg["lr_scheduler_type"],
         fp16=train_cfg.get("fp16", False),
         bf16=train_cfg.get("bf16", False),
+        gradient_checkpointing=train_cfg.get("gradient_checkpointing", False),
         logging_steps=train_cfg["logging_steps"],
         save_strategy=train_cfg["save_strategy"],
         save_steps=train_cfg["save_steps"],
