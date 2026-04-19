@@ -56,6 +56,7 @@ def main(config_path: str):
     training_args = SFTConfig(
         output_dir=output_dir,
         per_device_train_batch_size=train_cfg["per_device_train_batch_size"],
+        per_device_eval_batch_size=train_cfg.get("per_device_eval_batch_size", 1),
         gradient_accumulation_steps=train_cfg["gradient_accumulation_steps"],
         learning_rate=train_cfg["learning_rate"],
         num_train_epochs=train_cfg["num_train_epochs"],
