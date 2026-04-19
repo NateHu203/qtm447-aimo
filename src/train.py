@@ -88,8 +88,9 @@ def main(config_path: str):
         peft_config=peft_config,
     )
 
+    checkpoints = [d for d in os.listdir(output_dir) if d.startswith("checkpoint-")] if os.path.exists(output_dir) else []
     trainer.train(
-        resume_from_checkpoint=output_dir if os.path.exists(output_dir) else None
+        resume_from_checkpoint=output_dir if checkpoints else None
     )
 
     trainer.save_model(os.path.join(output_dir, "lora-final"))
