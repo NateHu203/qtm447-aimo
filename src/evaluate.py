@@ -13,6 +13,7 @@ import json
 import os
 import re
 from collections import Counter
+import torch
 from tqdm import tqdm
 
 from model import load_config, load_model_and_tokenizer
@@ -34,7 +35,7 @@ def majority_vote(answers: list[str | None]) -> str | None:
     return Counter(valid).most_common(1)[0][0]
 
 
-def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_tokens: int = 1024):
+def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_tokens: int = 512, batch_size: int = 8):
     from dataset import PROMPT_TEMPLATE
 
     correct = 0
@@ -43,25 +44,40 @@ def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_token
     with open(data_path) as f:
         examples = [json.loads(line) for line in f]
 
-    for ex in tqdm(examples):
-        prompt = PROMPT_TEMPLATE.format(problem=ex["problem"])
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    tokenizer.padding_side = "left"  # required for batched generation
 
-        candidate_answers = []
+    for batch_start in tqdm(range(0, len(examples), batch_size), desc="Evaluating"):
+        batch = examples[batch_start : batch_start + batch_size]
+        prompts = [PROMPT_TEMPLATE.format(problem=ex["problem"]) for ex in batch]
+
+        inputs = tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=2048,
+        ).to(model.device)
+
+        candidate_batches = []
         for _ in range(n_samples):
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=(n_samples > 1),
-                temperature=0.7 if n_samples > 1 else 1.0,
-            )
-            generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
-            candidate_answers.append(extract_answer(generated))
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=(n_samples > 1),
+                    temperature=0.7 if n_samples > 1 else 1.0,
+                    pad_token_id=tokenizer.pad_token_id,
+                )
+            prompt_len = inputs["input_ids"].shape[1]
+            generated = tokenizer.batch_decode(outputs[:, prompt_len:], skip_special_tokens=True)
+            candidate_batches.append(generated)
 
-        prediction = majority_vote(candidate_answers) if n_samples > 1 else candidate_answers[0]
-        if prediction is not None and prediction == str(ex["answer"]).strip():
-            correct += 1
-        total += 1
+        for i, ex in enumerate(batch):
+            candidates = [extract_answer(candidate_batches[s][i]) for s in range(n_samples)]
+            prediction = majority_vote(candidates) if n_samples > 1 else candidates[0]
+            if prediction is not None and prediction == str(ex["answer"]).strip():
+                correct += 1
+            total += 1
 
     accuracy = correct / total if total > 0 else 0.0
     print(f"Accuracy: {correct}/{total} = {accuracy:.4f}")
@@ -74,6 +90,8 @@ def main():
     parser.add_argument("--config", required=True)
     parser.add_argument("--data_path", required=True)
     parser.add_argument("--n_samples", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--max_new_tokens", type=int, default=512)
     parser.add_argument("--quantize", action="store_true", help="Load in 4-bit (use on T4/low VRAM)")
     args = parser.parse_args()
 
@@ -91,7 +109,7 @@ def main():
 
     model.eval()
 
-    evaluate(model, tokenizer, args.data_path, n_samples=args.n_samples)
+    evaluate(model, tokenizer, args.data_path, n_samples=args.n_samples, max_new_tokens=args.max_new_tokens, batch_size=args.batch_size)
 
 
 if __name__ == "__main__":
