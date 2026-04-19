@@ -27,10 +27,8 @@ def load_jsonl_as_hf_dataset(path: str) -> Dataset:
     with open(path) as f:
         for line in f:
             ex = json.loads(line)
-            records.append({
-                "prompt": PROMPT_TEMPLATE.format(problem=ex["problem"]) + " ",
-                "completion": ex["solution"],
-            })
+            text = PROMPT_TEMPLATE.format(problem=ex["problem"]) + " " + ex["solution"]
+            records.append({"text": text})
     return Dataset.from_list(records)
 
 
@@ -77,6 +75,7 @@ def main(config_path: str):
         load_best_model_at_end=True,
         max_length=train_cfg["max_seq_len"],
         packing=False,
+        dataset_text_field="text",
     )
 
     trainer = SFTTrainer(
