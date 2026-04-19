@@ -76,8 +76,17 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
+    # Override config model name if model_path looks like a HF model ID or local dir
+    config["model"]["name"] = args.model_path
     base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=True)
-    model = PeftModel.from_pretrained(base_model, args.model_path)
+
+    # Only wrap with PEFT if the path has an adapter_config.json (i.e. it's a LoRA adapter)
+    adapter_cfg = os.path.join(args.model_path, "adapter_config.json")
+    if os.path.exists(adapter_cfg):
+        model = PeftModel.from_pretrained(base_model, args.model_path)
+    else:
+        model = base_model
+
     model.eval()
 
     evaluate(model, tokenizer, args.data_path, n_samples=args.n_samples)

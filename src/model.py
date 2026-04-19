@@ -32,7 +32,7 @@ def load_model_and_tokenizer(config: dict, quantize_4bit: bool = False):
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch_dtype,
+        dtype=torch_dtype,
         quantization_config=bnb_config,
         device_map="auto",
         token=os.getenv("HF_TOKEN"),
