@@ -12,16 +12,13 @@ import sys
 
 from dotenv import load_dotenv
 from datasets import Dataset
-from trl import SFTTrainer, SFTConfig, DataCollatorForCompletionOnlyLM
+from trl import SFTTrainer, SFTConfig
 
 sys.path.insert(0, os.path.dirname(__file__))
 from model import load_config, load_model_and_tokenizer, apply_lora
 from dataset import PROMPT_TEMPLATE
 
 load_dotenv()
-
-RESPONSE_TEMPLATE = "\n</think>\n"
-
 
 def load_jsonl_as_hf_dataset(path: str) -> Dataset:
     records = []
@@ -45,12 +42,6 @@ def main(config_path: str):
 
     train_dataset = load_jsonl_as_hf_dataset(config["data"]["train_path"])
     val_dataset = load_jsonl_as_hf_dataset(config["data"]["val_path"])
-
-    # Only compute loss on the solution (after "Solution:" in the prompt)
-    collator = DataCollatorForCompletionOnlyLM(
-        response_template="Solution:",
-        tokenizer=tokenizer,
-    )
 
     training_args = SFTConfig(
         output_dir=output_dir,
@@ -82,7 +73,6 @@ def main(config_path: str):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        data_collator=collator,
         processing_class=tokenizer,
     )
 
