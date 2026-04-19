@@ -6,7 +6,7 @@ set -e
 
 echo "==> Installing dependencies..."
 pip install -q uv
-uv sync --system
+uv sync --active
 
 echo "==> Pulling latest code..."
 git pull origin main
