@@ -57,7 +57,6 @@ def main(config_path: str):
         run_name=train_cfg["run_name"],
         dataloader_num_workers=train_cfg.get("dataloader_num_workers", 0),
         load_best_model_at_end=True,
-        max_seq_length=train_cfg["max_seq_len"],
         packing=False,
     )
 
