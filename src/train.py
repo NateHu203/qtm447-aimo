@@ -21,6 +21,10 @@ from dataset import PROMPT_TEMPLATE
 
 load_dotenv()
 
+hf_cache = os.environ.get("HF_DATASETS_CACHE")
+if hf_cache:
+    os.makedirs(hf_cache, exist_ok=True)
+
 
 def load_jsonl_as_hf_dataset(path: str) -> Dataset:
     records = []

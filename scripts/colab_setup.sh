@@ -13,7 +13,7 @@ git pull origin main
 echo "==> Linking Drive directories..."
 # Assumes Drive is mounted at /content/drive and project root is /content/aimo-project
 DRIVE_DIR="/content/drive/MyDrive/AIMO"
-mkdir -p "$DRIVE_DIR/checkpoints" "$DRIVE_DIR/data/processed" "$DRIVE_DIR/logs"
+mkdir -p "$DRIVE_DIR/checkpoints" "$DRIVE_DIR/data/processed" "$DRIVE_DIR/logs" "$DRIVE_DIR/hf_cache"
 
 # Symlink checkpoints and processed data so src/ writes directly to Drive
 ln -sfn "$DRIVE_DIR/checkpoints" ./checkpoints
