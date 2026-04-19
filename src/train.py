@@ -7,11 +7,13 @@ Usage:
 
 import argparse
 import os
+import sys
 import wandb
 from dotenv import load_dotenv
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
 from trl import SFTTrainer
 
+sys.path.insert(0, os.path.dirname(__file__))
 from model import load_config, load_model_and_tokenizer, apply_lora
 from dataset import MathDataset
 
@@ -49,7 +51,7 @@ def main(config_path: str):
         save_strategy=train_cfg["save_strategy"],
         save_steps=train_cfg["save_steps"],
         save_total_limit=train_cfg["save_total_limit"],
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         eval_steps=train_cfg["save_steps"],
         report_to=train_cfg["report_to"],
         run_name=train_cfg["run_name"],
@@ -64,10 +66,12 @@ def main(config_path: str):
         eval_dataset=val_dataset,
         data_collator=DataCollatorForSeq2Seq(tokenizer, pad_to_multiple_of=8),
         max_seq_length=train_cfg["max_seq_len"],
+        packing=False,
+        tokenizer=tokenizer,
     )
 
     trainer.train(
-        resume_from_checkpoint=os.path.exists(output_dir) or None
+        resume_from_checkpoint=output_dir if os.path.exists(output_dir) else None
     )
 
     # Save final LoRA adapter to Drive (or local)

@@ -32,7 +32,7 @@ def run_with_tools(model, tokenizer, problem: str, max_new_tokens: int = 1024) -
     Generate a solution, executing any Python code blocks that appear.
     Loops until no more code blocks are emitted or max iterations reached.
     """
-    from src.dataset import PROMPT_TEMPLATE
+    from dataset import PROMPT_TEMPLATE
 
     prompt = PROMPT_TEMPLATE.format(problem=problem)
     context = prompt

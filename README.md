@@ -1,5 +1,8 @@
 # AIMO — QTM 447 Final Project
 
+> **Project Memory:** Detailed week-by-week progress (baselines, completed tasks, active work) is tracked in the Claude project memory file at:
+> `~/.claude/projects/-Users-nate-Desktop-QTM-447-qtm447-aimo/memory/project_progress.md`
+
 Fine-tuning math reasoning LLMs for the [AI Mathematical Olympiad (AIMO3) Kaggle challenge](https://www.kaggle.com/competitions/ai-mathematical-olympiad-progress-prize-3).
 
 ---

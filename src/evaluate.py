@@ -12,10 +12,12 @@ import argparse
 import json
 import os
 import re
+import sys
 from collections import Counter
 import torch
 from tqdm import tqdm
 
+sys.path.insert(0, os.path.dirname(__file__))
 from model import load_config, load_model_and_tokenizer
 from peft import PeftModel
 
