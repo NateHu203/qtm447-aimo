@@ -93,10 +93,14 @@ def main(config_path: str):
         peft_config=peft_config,
     )
 
-    checkpoints = [d for d in os.listdir(output_dir) if d.startswith("checkpoint-")] if os.path.exists(output_dir) else []
-    trainer.train(
-        resume_from_checkpoint=output_dir if checkpoints else None
-    )
+    checkpoints = sorted(
+        [d for d in os.listdir(output_dir) if d.startswith("checkpoint-")],
+        key=lambda x: int(x.split("-")[-1])
+    ) if os.path.exists(output_dir) else []
+    resume = os.path.join(output_dir, checkpoints[-1]) if checkpoints else None
+    if resume:
+        print(f"Resuming from {resume}")
+    trainer.train(resume_from_checkpoint=resume)
 
     trainer.save_model(os.path.join(output_dir, "lora-final"))
     tokenizer.save_pretrained(os.path.join(output_dir, "lora-final"))
