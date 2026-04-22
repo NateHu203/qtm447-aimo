@@ -31,6 +31,20 @@ def extract_answer(text: str) -> str | None:
     return matches[-1].strip() if matches else None
 
 
+def answers_equal(pred: str | None, gold) -> bool:
+    """Compare prediction and gold answer, tolerant to numeric equivalence ('5.0' == '5')."""
+    if pred is None:
+        return False
+    pred_s = pred.strip()
+    gold_s = str(gold).strip()
+    if pred_s == gold_s:
+        return True
+    try:
+        return float(pred_s) == float(gold_s)
+    except (ValueError, TypeError):
+        return False
+
+
 def majority_vote(answers: list[str | None]) -> str | None:
     valid = [a for a in answers if a is not None]
     if not valid:
@@ -89,7 +103,7 @@ def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_token
         for i, ex in enumerate(batch):
             candidates = [extract_answer(candidate_batches[s][i]) for s in range(n_samples)]
             prediction = majority_vote(candidates) if n_samples > 1 else candidates[0]
-            if prediction is not None and prediction == str(ex["answer"]).strip():
+            if answers_equal(prediction, ex["answer"]):
                 correct += 1
             total += 1
 
@@ -105,7 +119,7 @@ def main():
     parser.add_argument("--data_path", required=True)
     parser.add_argument("--n_samples", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--max_new_tokens", type=int, default=512)
+    parser.add_argument("--max_new_tokens", type=int, default=2048)
     parser.add_argument("--quantize", action="store_true", help="Load in 4-bit (use on T4/low VRAM)")
     parser.add_argument("--output", default=None, help="Path to save results JSON")
     parser.add_argument("--plain_prompt", action="store_true", help="Use Round 1's plain 'Problem: ... Solution:' template instead of ChatML")
