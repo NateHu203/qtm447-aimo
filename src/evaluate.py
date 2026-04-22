@@ -23,6 +23,7 @@ from peft import PeftModel
 
 
 BOXED_RE = re.compile(r"\\boxed\{([^}]+)\}")
+SYSTEM_PROMPT = "Please reason step by step, and put your final answer within \\boxed{}."
 
 
 def extract_answer(text: str) -> str | None:
@@ -37,9 +38,20 @@ def majority_vote(answers: list[str | None]) -> str | None:
     return Counter(valid).most_common(1)[0][0]
 
 
-def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_tokens: int = 512, batch_size: int = 8):
+def build_prompt(tokenizer, problem: str, use_chatml: bool = True) -> str:
+    if use_chatml:
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": problem},
+        ]
+        return tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
     from dataset import PROMPT_TEMPLATE
+    return PROMPT_TEMPLATE.format(problem=problem)
 
+
+def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_tokens: int = 512, batch_size: int = 8, use_chatml: bool = True):
     correct = 0
     total = 0
 
@@ -50,7 +62,7 @@ def evaluate(model, tokenizer, data_path: str, n_samples: int = 1, max_new_token
 
     for batch_start in tqdm(range(0, len(examples), batch_size), desc="Evaluating"):
         batch = examples[batch_start : batch_start + batch_size]
-        prompts = [PROMPT_TEMPLATE.format(problem=ex["problem"]) for ex in batch]
+        prompts = [build_prompt(tokenizer, ex["problem"], use_chatml) for ex in batch]
 
         inputs = tokenizer(
             prompts,
@@ -96,6 +108,7 @@ def main():
     parser.add_argument("--max_new_tokens", type=int, default=512)
     parser.add_argument("--quantize", action="store_true", help="Load in 4-bit (use on T4/low VRAM)")
     parser.add_argument("--output", default=None, help="Path to save results JSON")
+    parser.add_argument("--plain_prompt", action="store_true", help="Use Round 1's plain 'Problem: ... Solution:' template instead of ChatML")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -112,7 +125,13 @@ def main():
 
     model.eval()
 
-    accuracy = evaluate(model, tokenizer, args.data_path, n_samples=args.n_samples, max_new_tokens=args.max_new_tokens, batch_size=args.batch_size)
+    accuracy = evaluate(
+        model, tokenizer, args.data_path,
+        n_samples=args.n_samples,
+        max_new_tokens=args.max_new_tokens,
+        batch_size=args.batch_size,
+        use_chatml=not args.plain_prompt,
+    )
 
     if args.output:
         import datetime
@@ -121,6 +140,7 @@ def main():
             "data_path": args.data_path,
             "n_samples": args.n_samples,
             "max_new_tokens": args.max_new_tokens,
+            "prompt_format": "plain" if args.plain_prompt else "chatml",
             "accuracy": accuracy,
             "timestamp": datetime.datetime.now().isoformat(),
         }

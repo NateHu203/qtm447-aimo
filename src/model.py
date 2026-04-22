@@ -22,12 +22,12 @@ def load_model_and_tokenizer(config: dict, quantize_4bit: bool = False):
     torch_dtype = getattr(torch, config["model"].get("torch_dtype", "float16"))
 
     bnb_config = None
-    if quantize_4bit:
+    if quantize_4bit or config["model"].get("load_in_4bit", False):
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=torch.float16,
         )
 
     model = AutoModelForCausalLM.from_pretrained(
