@@ -6,6 +6,49 @@
 
 ---
 
+## STATUS: SUPERSEDED (2026-04-23)
+
+**Round 2 training is cancelled.** Diagnostics (D1 + D2) revealed that the Round 1 "regression" was an evaluation-side artifact, not a model-side regression. Under corrected evaluation, Round 1 SFT actually outperforms the baseline by +10 points, well above the stretch goal.
+
+### Findings from D1 (10-problem raw inspection)
+- Round 1 model reliably produces `\boxed{}` output under *both* the plain and ChatML templates (10/10 each on the sample)
+- Three evaluation-side bugs were identified, not a training-side failure:
+  1. `max_new_tokens=512` truncated olympiad solutions before reaching `\boxed{}` (many solutions are 600–900 tokens)
+  2. String-equality comparison failed on numerically equivalent outputs (`"5.0" != "5"`)
+  3. Inference used the Round 1 plain-text template instead of Qwen's ChatML format
+- One data quality issue surfaced (idx 7: proof question with `expected_answer = "90"` that has no defensible numeric answer) — known but minor at this scale
+
+### Findings from D2 (full 200-problem re-evaluation)
+
+Both models re-evaluated under identical corrected conditions (ChatML + `max_new_tokens=2048` + numeric-tolerant comparison):
+
+| Model | Eval v1 (buggy) | Eval v2 (fixed) | Δ |
+|---|---|---|---|
+| Zero-shot Qwen2.5-Math-7B-Instruct | 36.0% | **57.0%** | +21.0 |
+| SFT Round 1 (LoRA r=64) | 34.0% | **67.0%** | +33.0 |
+| **SFT vs baseline** | **−2.0** | **+10.0** | |
+
++10 points is well above the ±3.4% CI at 95% on 200 samples — statistically significant.
+
+### Decision
+- **Do not execute the training changes in sections 3, 5 below.** They were designed for a model that needed rescuing; the model did not need rescuing.
+- Keep the evaluation changes in section 4 — those are now applied in [src/evaluate.py](src/evaluate.py).
+- The C1–C6 training changes (ChatML format, completion-only loss, lower LR, smaller rank, efficiency flags) remain valid *theory* and should be in the write-up as "what Round 2 would have looked like." They're not wrong; they're just unnecessary given current accuracy.
+
+### What's still open (optional, post-decision)
+- **Error analysis on the 33% still wrong**: which are truncation at 2048, data quality, or genuine reasoning failures? Informs whether pursuing Week 3 (tool use / TIR) is worthwhile.
+- **Full `val.jsonl` eval (3,805 problems)**: tightens the CI from ±3.4% to ~±1%; makes the 67% number more defensible in the final writeup. ~2–3 hrs A100.
+- **Week 3 TIR (Python REPL at inference)**: historically the largest olympiad-math gains. Could push 67% → 75%+ but requires real work. Only pursue if the writeup needs a bigger number.
+
+### Key lesson
+The single highest-value activity of the project was the **D1 diagnostic script** — 15 minutes of free T4 compute to print raw model outputs saved us from spending 40+ compute units on a Round 2 training run that wouldn't have mattered. "Measure before you retrain" is the discipline to preserve into Week 3+.
+
+---
+
+*The rest of this document is preserved as a historical record of what Round 2 would have been if needed. None of the training changes below were executed.*
+
+---
+
 ## 1. Goals and success criteria
 
 **Primary goal:** Beat the zero-shot baseline of **36.0%** on `val_200.jsonl` by a statistically meaningful margin (≥3.4% above baseline given the ±3.4% CI at 95% → target **≥40%**).
