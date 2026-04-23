@@ -66,9 +66,34 @@ def main():
     with open(args.data_path) as f:
         examples = [json.loads(line) for line in f]
 
+    # Resume support: skip problems already in the output file
+    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+    jsonl_path = args.output + ".jsonl"  # incremental per-problem log
+    done_problems = set()
+    if os.path.exists(jsonl_path):
+        with open(jsonl_path) as f:
+            for line in f:
+                try:
+                    done_problems.add(json.loads(line)["problem"])
+                except (json.JSONDecodeError, KeyError):
+                    pass
+        print(f"Resuming: {len(done_problems)} problems already completed, skipping those.")
+
     records = []
-    for batch_start in tqdm(range(0, len(examples), args.batch_size), desc="Analyzing"):
-        batch = examples[batch_start : batch_start + args.batch_size]
+    # Load anything we've already written so the final summary is complete
+    if os.path.exists(jsonl_path):
+        with open(jsonl_path) as f:
+            for line in f:
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+
+    jsonl_file = open(jsonl_path, "a")
+
+    remaining = [ex for ex in examples if ex["problem"] not in done_problems]
+    for batch_start in tqdm(range(0, len(remaining), args.batch_size), desc="Analyzing"):
+        batch = remaining[batch_start : batch_start + args.batch_size]
         prompts = [
             tokenizer.apply_chat_template(
                 [
@@ -98,7 +123,7 @@ def main():
             category = "correct" if correct else categorize_failure(
                 raw, extracted, ex["answer"], args.max_new_tokens
             )
-            records.append({
+            record = {
                 "problem": ex["problem"],
                 "expected_answer": str(ex["answer"]),
                 "extracted": extracted,
@@ -106,9 +131,14 @@ def main():
                 "category": category,
                 "output_length_chars": len(raw),
                 "raw_output": raw,
-            })
+            }
+            records.append(record)
+            # Persist immediately so we never lose work on a crash
+            jsonl_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+            jsonl_file.flush()
 
-    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+    jsonl_file.close()
+
     with open(args.output, "w") as f:
         json.dump(records, f, indent=2, ensure_ascii=False)
 
