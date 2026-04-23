@@ -30,8 +30,8 @@ def plot_main_results():
     accuracy = [57.0, 67.0]
     colors = [GRAY, EMORY_BLUE]
 
-    fig, ax = plt.subplots(figsize=(7, 5.5))
-    bars = ax.bar(labels, accuracy, color=colors, width=0.55)
+    fig, ax = plt.subplots(figsize=(8.5, 5.0))
+    bars = ax.bar(labels, accuracy, color=colors, width=0.45)
 
     for bar, acc in zip(bars, accuracy):
         ax.text(bar.get_x() + bar.get_width() / 2, acc + 1.0, f"{acc:.0f}%",
@@ -57,7 +57,7 @@ def plot_ood_comparison():
     x = np.arange(len(benchmarks))
     width = 0.35
 
-    fig, ax = plt.subplots(figsize=(8.5, 5.5))
+    fig, ax = plt.subplots(figsize=(8.5, 5.0))
     b1 = ax.bar(x - width / 2, baseline, width, label="Zero-shot baseline", color=GRAY)
     b2 = ax.bar(x + width / 2, sft, width, label="SFT Round 1", color=EMORY_BLUE)
 
