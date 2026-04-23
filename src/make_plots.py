@@ -25,34 +25,32 @@ EMORY_GOLD = "#B58500"
 GRAY = "#555555"
 
 
-def plot_eval_v1_vs_v2():
-    """Bar chart: baseline and SFT under eval v1 (buggy) vs eval v2 (fixed)."""
+def plot_main_results():
+    """Main result: baseline vs SFT on val_200."""
     labels = ["Zero-shot\nbaseline", "SFT Round 1\n(LoRA r=64)"]
-    eval_v1 = [36.0, 34.0]
-    eval_v2 = [57.0, 67.0]
+    accuracy = [57.0, 67.0]
+    colors = [GRAY, EMORY_BLUE]
 
-    x = np.arange(len(labels))
-    width = 0.35
+    fig, ax = plt.subplots(figsize=(7, 5.5))
+    bars = ax.bar(labels, accuracy, color=colors, width=0.55)
 
-    fig, ax = plt.subplots(figsize=(8, 5.5))
-    b1 = ax.bar(x - width / 2, eval_v1, width, label="Eval v1 (original)", color=GRAY)
-    b2 = ax.bar(x + width / 2, eval_v2, width, label="Eval v2 (corrected)", color=EMORY_BLUE)
+    for bar, acc in zip(bars, accuracy):
+        ax.text(bar.get_x() + bar.get_width() / 2, acc + 1.0, f"{acc:.0f}%",
+                ha="center", fontsize=14, fontweight="bold")
 
-    for bars in (b1, b2):
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.8, f"{h:.0f}%", ha="center", fontsize=11, fontweight="bold")
+    # Delta annotation
+    ax.annotate("", xy=(1, 67), xytext=(0, 57),
+                arrowprops=dict(arrowstyle="->", color="green", lw=1.5))
+    ax.text(0.5, 62.5, "+10 pts", ha="center", color="green", fontsize=12, fontweight="bold")
 
-    ax.set_ylabel("Accuracy on val_200", fontsize=12)
-    ax.set_title("Eval methodology changed the result entirely", fontsize=13, fontweight="bold")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=11)
+    ax.set_ylabel("Accuracy on val_200 (200 problems)", fontsize=12)
+    ax.set_title("SFT gains +10 points over baseline", fontsize=13, fontweight="bold")
     ax.set_ylim(0, 80)
-    ax.axhline(45, color="red", linestyle="--", alpha=0.4, label="Target (45%)")
-    ax.legend(loc="upper left", fontsize=10)
+    ax.axhline(45, color="red", linestyle="--", alpha=0.4)
+    ax.text(1.45, 46, "Target: 45%", color="red", fontsize=9, alpha=0.7)
     ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
-    out = PLOTS_DIR / "eval_v1_vs_v2.png"
+    out = PLOTS_DIR / "main_results.png"
     plt.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"Saved {out}")
@@ -133,6 +131,6 @@ def plot_ood_comparison(val200_base=57.0, val200_sft=67.0, aime_base=None, aime_
 
 
 if __name__ == "__main__":
-    plot_eval_v1_vs_v2()
+    plot_main_results()
     plot_error_breakdown()
     plot_ood_comparison()  # edit args after AIME eval
