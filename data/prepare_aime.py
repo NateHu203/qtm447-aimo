@@ -40,7 +40,9 @@ def main():
 
     records = []
 
-    # AIME 2024 — primary held-out test
+    # AIME 2024 — held-out test (30 problems)
+    # Note: released Feb 2024; NuminaMath-CoT final update was Nov 2024,
+    # so there's some contamination risk. Still useful as OOD baseline.
     ds_2024 = load_dataset("Maxwell-Jia/AIME_2024", split="train")
     for ex in ds_2024:
         records.append({
@@ -49,16 +51,14 @@ def main():
             "source": "AIME_2024",
         })
 
-    # AIME 2023 — additional held-out, expands sample size
-    ds_2023 = load_dataset("yentinglin/aime_2025", split="train")  # contains 2023 + 2024 + 2025
-    for ex in ds_2023:
-        year = str(ex.get("year", "")).strip()
-        if year == "2023":
-            records.append({
-                "problem": clean_problem(ex["problem"]),
-                "answer": normalize_answer(ex["answer"]),
-                "source": "AIME_2023",
-            })
+    # AIME 2025 — clean OOD (30 problems, released after training data cutoff)
+    ds_2025 = load_dataset("yentinglin/aime_2025", split="train")
+    for ex in ds_2025:
+        records.append({
+            "problem": clean_problem(ex["problem"]),
+            "answer": normalize_answer(ex["answer"]),
+            "source": "AIME_2025",
+        })
 
     with OUT_PATH.open("w") as f:
         for r in records:
