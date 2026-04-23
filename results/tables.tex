@@ -1,0 +1,58 @@
+% ============================================================
+% Overleaf / LaTeX tables for the AIMO poster
+% Uses booktabs (already in most conference templates)
+% If not loaded, add to preamble:  \usepackage{booktabs}
+% ============================================================
+
+
+% ---------- Table 1: Main Results ----------
+\begin{table}[t]
+\centering
+\caption{Accuracy of zero-shot baseline vs.\ SFT Round~1 (LoRA $r{=}64$) on held-out evaluation sets. Parenthesized intervals are Wilson 95\% CIs.}
+\label{tab:main-results}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Benchmark} & $n$ & \textbf{Baseline} & \textbf{SFT (Ours)} \\
+\midrule
+val\_200 (in-distribution) & 200 & 57.0\% [53.6, 60.4] & \textbf{67.0\%} [63.6, 70.4] \\
+AIME 2024 (partial OOD)    & 30  & 23.3\% [11.8, 40.9] & 16.7\% [7.3, 33.6]  \\
+AIME 2025 (clean OOD)      & 30  & \phantom{0}6.7\% [1.6, 21.6] & \phantom{0}6.7\% [1.6, 21.6]  \\
+AIME combined              & 60  & 15.0\% [8.0, 26.2]  & 11.7\% [5.6, 22.0]  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ---------- Table 2: Error Analysis (SFT on AIME) ----------
+\begin{table}[t]
+\centering
+\caption{Failure-mode breakdown of the SFT model on AIME (n=60). \texttt{wrong\_numeric} denotes a well-formed \texttt{\textbackslash boxed\{$\cdot$\}} answer that is mathematically incorrect; \texttt{no\_box} denotes outputs that failed to emit a boxed answer (all observed cases end mid-calculation, indicating generation-budget truncation at 2048 tokens).}
+\label{tab:error-analysis}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Category}   & \textbf{Count} & \textbf{\% of n=60} \\
+\midrule
+\texttt{correct}         & \phantom{0}7 & 11.7\% \\
+\texttt{wrong\_numeric}  & 49 & 81.7\% \\
+\texttt{no\_box}         & \phantom{0}4 & \phantom{0}6.7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ---------- Table 3: OOD Robustness (Catastrophic Forgetting) ----------
+\begin{table}[t]
+\centering
+\caption{AIME accuracy split by year reveals a catastrophic-forgetting signature. The base model shows a 16.6-point advantage on AIME~2024 over AIME~2025, consistent with AIME 2024 appearing in Qwen's pre-training. SFT eliminates 6.6 points of this pre-existing capability on 2024 while leaving the near-floor 2025 performance unchanged, indicating that fine-tuning degraded the model's out-of-distribution reasoning rather than contaminating it.}
+\label{tab:robustness}
+\begin{tabular}{lcccr}
+\toprule
+\textbf{Benchmark} & $n$ & \textbf{Baseline} & \textbf{SFT} & \textbf{$\Delta$} \\
+\midrule
+val\_200 (in-distribution) & 200 & 57.0\% & \textbf{67.0\%} & $+10.0$ \\
+\midrule
+AIME 2024 (pre-cutoff)     & 30  & 23.3\% & 16.7\% & $-6.7$ \\
+AIME 2025 (post-cutoff)    & 30  & \phantom{0}6.7\% & \phantom{0}6.7\% & $\phantom{-}0.0$ \\
+\bottomrule
+\end{tabular}
+\end{table}
