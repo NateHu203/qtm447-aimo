@@ -55,11 +55,14 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
-    config["model"]["name"] = args.model_path
-    base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=args.quantize)
-
     adapter_cfg = os.path.join(args.model_path, "adapter_config.json")
-    model = PeftModel.from_pretrained(base_model, args.model_path) if os.path.exists(adapter_cfg) else base_model
+    is_adapter = os.path.exists(adapter_cfg)
+
+    if not is_adapter:
+        config["model"]["name"] = args.model_path
+
+    base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=args.quantize)
+    model = PeftModel.from_pretrained(base_model, args.model_path) if is_adapter else base_model
     model.eval()
     tokenizer.padding_side = "left"
 

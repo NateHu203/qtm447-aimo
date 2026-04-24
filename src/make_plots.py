@@ -97,7 +97,7 @@ def plot_error_breakdown(errors_json="results/sft_aime_errors_2.json", label="AI
     total = len(records)
     correct = cats.get("correct", 0)
 
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    fig, ax = plt.subplots(figsize=(8, 3))
     sorted_cats = sorted(wrong_cats.items(), key=lambda x: -x[1])
     labels = [c.replace("_", " ") for c, _ in sorted_cats]
     counts = [v for _, v in sorted_cats]
@@ -105,7 +105,7 @@ def plot_error_breakdown(errors_json="results/sft_aime_errors_2.json", label="AI
     bars = ax.barh(labels, counts, color=EMORY_GOLD)
     for bar, count in zip(bars, counts):
         pct = 100 * count / total
-        ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
+        ax.text(bar.get_width(), bar.get_y() + bar.get_height() / 2,
                 f"{count} ({pct:.1f}%)", va="center", fontsize=11)
 
     ax.set_xlabel(f"Count (n = {total})", fontsize=11)
