@@ -14,11 +14,11 @@ Under **corrected evaluation** (ChatML format, `max_new_tokens=2048`, numeric-to
 |---|---|---|---|---|
 | `val_200` (in-distribution) | 200 | 57.0% | **67.0%** | 55.0% |
 | AIME 2024 (partial pretraining overlap) | 30 | 23.3% | 16.7% | 3.3% |
-| AIME 2025 (clean OOD) | 30 | 6.7% | 6.7% | 10.0% (n.s.) |
+| AIME 2025 (clean OOD) | 30 | 6.7% | 6.7% | 10.0% |
 
-**Round 1** (LoRA r=64, lr=2e-4) gains +10 in-distribution but loses −6.7 on AIME 2024 (catastrophic forgetting on a benchmark where the base model already had competence). **Round 2** (r=16, lr=1e-5, bf16) tested whether conservative hyperparameters alone reduce the forgetting; the answer is asymmetric — Round 2 collapses AIME 2024 even further (3.3%) while directionally improving AIME 2025 (10.0%, within noise at n=30). The picture: Round 2 is *less specialized* than Round 1, which means less overfitting to NuminaMath's style but more disruption of pre-existing capability. **The likely dominant cause across both rounds is the training/eval format mismatch** (training uses plain text, evaluation uses ChatML); Round 1's larger adapter could absorb it by force-fitting, Round 2's could not. **The structural format fix is the priority for any future round, not hyperparameter conservatism.**
+Round 1 (LoRA r=64, lr=2e-4) gains +10 in-distribution but loses 6.7 points on AIME 2024 — catastrophic forgetting on a benchmark where the base model already had pretraining-derived competence. Round 2 (r=16, lr=1e-5, bf16) tested whether conservative hyperparameters alone reduce the forgetting. The answer is asymmetric: Round 2 collapsed AIME 2024 further (3.3%) while directionally improving AIME 2025 (10.0%, within noise at n=30) and dropping val_200 to 55.0%. Round 2 is less specialized than Round 1, which means less overfitting to NuminaMath's style but also more disruption of pre-existing capability. The likely dominant cause across both rounds is the training/eval format mismatch (training uses plain text, evaluation uses ChatML); Round 1's larger adapter could absorb the mismatch by force-fitting, Round 2's could not. The structural format fix is the priority for any future round, not hyperparameter conservatism.
 
-Under the **original** (buggy) evaluation, the Round 1 model appeared to *regress* by 2 points on `val_200`. Three evaluation bugs (token truncation, strict string equality, prompt-format mismatch) had silently inflated failure counts for both models. Diagnostic inspection of 10 raw outputs surfaced this in 15 minutes of free compute. **A 12-point swing in measured effect came from the evaluation protocol alone.**
+Under the original (buggy) evaluation, the Round 1 model appeared to regress by 2 points on val_200. Three evaluation bugs (token truncation, strict string equality, prompt-format mismatch) had silently inflated failure counts for both models. Diagnostic inspection of 10 raw outputs surfaced this in 15 minutes of free compute. A 12-point swing in measured effect came from the evaluation protocol alone.
 
 For the full narrative, methodology, and what was learned, see [experiments/](experiments/).
 
@@ -32,7 +32,7 @@ qtm447-aimo/
 ├── experiments/                    # narrative records of each round
 │   ├── README.md                   # timeline + cross-cutting findings
 │   ├── round_1.md                  # Round 1 SFT + diagnostic + OOD analysis
-│   └── round_2.md                  # Round 2 retrain (in progress)
+│   └── round_2.md                  # Round 2 hyperparameter-only retrain
 ├── configs/                        # training hyperparameter YAMLs
 │   ├── sft_7b.yaml                 # Round 1 (lr=2e-4, r=64, fp16)
 │   ├── sft_7b_v2.yaml              # Round 2 (lr=1e-5, r=16, bf16)

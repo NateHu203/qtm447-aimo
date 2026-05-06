@@ -1,7 +1,7 @@
 [project]
 name = "qtm447-aimo"
 version = "0.1.0"
-description = "Add your description here"
+description = "QTM 447 final project: LoRA fine-tuning of Qwen2.5-Math-7B-Instruct on filtered NuminaMath olympiad problems."
 requires-python = ">=3.12"
 dependencies = [
     "accelerate>=1.13.0",

@@ -1,8 +1,10 @@
 """
-PyTorch Dataset and collator for SFT training.
+Prompt template and a PyTorch Dataset implementing prompt-only label masking.
 
-Each JSONL record is expected to have keys: problem, solution, answer, source.
-The model is trained to predict `solution` given `problem`.
+Note: the active SFT path in train.py uses a flat HuggingFace Dataset and does
+not invoke the masking logic in MathDataset below. The class is retained for
+reference and as a starting point for completion-only loss masking in a future
+round (see experiments/round_2.md §6).
 """
 
 import json

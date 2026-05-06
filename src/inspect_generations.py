@@ -1,12 +1,12 @@
 """
-D1 diagnostic: print raw generations from the Round 1 SFT model.
+Diagnostic: print raw generations side-by-side under two prompt formats.
 
 Compares two prompt formats on the same problems:
-  - "plain"  : the Round 1 training template ("Problem: ... Solution:")
+  - "plain"  : the SFT training template ("Problem: ... Solution:")
   - "chatml" : Qwen's ChatML template with math system prompt
 
-This tells us whether Round 1's regression is a template issue (ChatML recovers
-accuracy) or a deeper reasoning regression (both formats fail).
+Useful for distinguishing evaluation artifacts (model is fine but prompt format
+mismatches) from real model regressions (both formats produce poor output).
 
 Usage (T4 with 4-bit, free):
     python src/inspect_generations.py \\
@@ -79,14 +79,14 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
-    config["model"]["name"] = args.model_path
-    base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=args.quantize)
-
     adapter_cfg = os.path.join(args.model_path, "adapter_config.json")
-    if os.path.exists(adapter_cfg):
-        model = PeftModel.from_pretrained(base_model, args.model_path)
-    else:
-        model = base_model
+    is_adapter = os.path.exists(adapter_cfg)
+
+    if not is_adapter:
+        config["model"]["name"] = args.model_path
+
+    base_model, tokenizer = load_model_and_tokenizer(config, quantize_4bit=args.quantize)
+    model = PeftModel.from_pretrained(base_model, args.model_path) if is_adapter else base_model
     model.eval()
 
     with open(args.data_path) as f:

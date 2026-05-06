@@ -7,7 +7,7 @@
 | **Run name** | `qwen2.5-math-7b-lora-r64` |
 | **W&B** | https://wandb.ai/xhu03204_1/huggingface/runs/6hpooror |
 | **Adapter location** | `MyDrive/AIMO/checkpoints/lora-final` |
-| **Headline** | Under corrected evaluation, the SFT model gains **+10 points** over the zero-shot baseline on `val_200` (57% → 67%). The same fine-tuning **degrades** out-of-distribution capability on AIME 2024 (−6.7 points), exhibiting a catastrophic-forgetting signature. |
+| **Headline** | Under corrected evaluation, the SFT model gains 10 points over the zero-shot baseline on val_200 (57% → 67%). The same fine-tuning degrades out-of-distribution capability on AIME 2024 (−6.7 points), exhibiting a catastrophic-forgetting signature. |
 
 ---
 
@@ -92,27 +92,27 @@ The same evaluation procedure changes that made the baseline go from 36% to 57% 
 
 ## 3. What we learned
 
-**(a) Evaluation methodology can outweigh training methodology.** A 12-point swing in the measured SFT effect came from changing only the evaluation protocol — same model, same training, different way of scoring. This is not a Round 1 finding *about* the model; it is a finding about how to do this kind of work. Diagnostic inspection of ~10 raw outputs costs <1% of a full retraining run and reliably distinguishes real regressions from evaluation artifacts.
+**(a) Evaluation methodology can outweigh training methodology.** A 12-point swing in the measured SFT effect came from changing only the evaluation protocol: same model, same training, different way of scoring. Diagnostic inspection of ~10 raw outputs costs <1% of a full retraining run and reliably distinguishes real regressions from evaluation artifacts.
 
-**(b) In-distribution gains do not imply OOD gains.** The +10 points on `val_200` coexists with a 6.7-point degradation on AIME 2024 — a benchmark on which the base model already had measurable competence. SFT erased some of that pre-existing capability. On AIME 2025, where neither model has meaningful capability, SFT neither helps nor hurts. This is the canonical signature of **catastrophic forgetting** under aggressive fine-tuning of an already-aligned base model.
+**(b) In-distribution gains do not imply OOD gains.** The +10 points on val_200 coexists with a 6.7-point degradation on AIME 2024, a benchmark on which the base model already had measurable competence. SFT erased some of that pre-existing capability. On AIME 2025, where neither model has meaningful capability, SFT neither helps nor hurts. This is the canonical signature of catastrophic forgetting under aggressive fine-tuning of an already-aligned base model.
 
-**(c) Plausible mechanisms for (b).** All three are concrete, testable in Round 2:
+**(c) Plausible mechanisms for (b).** All three are concrete and testable in Round 2:
 
-- **Aggressive learning rate** (2e-4) on an already-instruct-tuned base overwrites the Qwen team's RLHF alignment (Dr. McAlister, p.c.).
-- **Full-sequence loss** instead of completion-only masking spends ~half the gradient budget teaching the model to predict problem statements rather than solutions ([`src/dataset.py`](../src/dataset.py) implements masking but [`src/train.py`](../src/train.py) does not invoke it).
-- **Training-time format mismatch** (plain `"Problem: ... Solution:"` instead of Qwen's ChatML) trains the model in a context where its post-trained behavior — including its `\boxed{}` convention — does not activate.
+- **Aggressive learning rate** (2e-4) on an already-instruct-tuned base overwrites the Qwen team's RLHF alignment (Dr. McAlister, personal communication).
+- **Full-sequence loss** instead of completion-only masking spends roughly half the gradient budget teaching the model to predict problem statements rather than solutions ([`src/dataset.py`](../src/dataset.py) implements masking but [`src/train.py`](../src/train.py) does not invoke it).
+- **Training-time format mismatch** (plain `"Problem: ... Solution:"` instead of Qwen's ChatML) trains the model in a context where its post-trained behavior, including its `\boxed{}` convention, does not activate.
 
-**(d) Token-level loss is not capability.** The training loss dropped smoothly from 0.77 to 0.21, and we initially read this as "the model is learning." It was learning *the surface format of NuminaMath solutions*, not olympiad math. The clean way to detect this is what we eventually did: re-evaluate under multiple conditions and look for distribution shift in the gap.
+**(d) Token-level loss is not capability.** The training loss dropped smoothly from 0.77 to 0.21, which we initially read as the model learning. It was learning the surface format of NuminaMath solutions, not olympiad math. The clean way to detect this is to re-evaluate under multiple conditions and look for distribution shift in the gap.
 
 ---
 
 ## 4. What's next
 
-Round 2 (see [round_2.md](round_2.md)) tested the conservative-hyperparameter portion of the Round 1 plausible-mechanisms list (smaller LoRA rank, lower learning rate, bf16) in isolation. **The result was a clean negative:** Round 2 underperformed both Round 1 *and* the baseline on every benchmark (val_200: 55.0%, AIME 2024: 3.3%). Hyperparameter conservatism alone, without the structural training fixes, makes the OOD problem worse.
+Round 2 (see [round_2.md](round_2.md)) tested the conservative-hyperparameter portion of the plausible-mechanisms list (smaller LoRA rank, lower learning rate, bf16) in isolation. The result was asymmetric: Round 2 collapsed AIME 2024 further (16.7% → 3.3%), directionally improved AIME 2025 (6.7% → 10.0%, within noise at n=30), and dropped val_200 to 55.0%. Hyperparameter conservatism alone did not close the OOD gap, and on benchmarks where the base model had pre-existing capability (val_200, AIME 2024) it disrupted that capability more than Round 1 did.
 
-This makes the case for the structural fixes (ChatML training format, completion-only loss masking) much stronger. They are now Round 3 priorities — not lower-priority follow-ups — and Round 2's hyperparameters are likely appropriate *given* the format is correct.
+This points to the structural fixes (ChatML training format, completion-only loss masking) as the more likely lever for further gain. They are Round 3 priorities, with Round 2's hyperparameters retained — those hyperparameters are likely appropriate *given* the format is correct.
 
-Beyond retraining, the most promising direction by literature precedent is **tool-integrated reasoning** (Python REPL at inference). NuminaMath-TIR is already in the training set; the missing piece is the inference-time tool-calling loop. This is documented as a future direction rather than executed here.
+Beyond retraining, the most promising direction by literature precedent is tool-integrated reasoning (Python REPL at inference). NuminaMath-TIR is already in the training set; the missing piece is the inference-time tool-calling loop. This is documented as a future direction rather than executed here.
 
 ---
 

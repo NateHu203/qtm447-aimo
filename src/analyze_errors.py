@@ -83,7 +83,7 @@ def main():
         print(f"Resuming: {len(done_problems)} problems already completed, skipping those.")
 
     records = []
-    # Load anything we've already written so the final summary is complete
+    # Reload anything already written so the final summary is complete after a resume.
     if os.path.exists(jsonl_path):
         with open(jsonl_path) as f:
             for line in f:
