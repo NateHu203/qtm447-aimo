@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| **Status** | Complete on val_200 and AIME 2024; AIME 2025 partial (2/30) |
+| **Status** | Complete |
 | **Date(s)** | Plan drafted: 2026-04-22. Plan suspended: 2026-04-23 (after Round 1 diagnostic). Hyperparameter-only retrain executed: 2026-04-23 to 2026-04-24. Evaluation: 2026-05-03 to 2026-05-05. |
 | **Run name** | `qwen2.5-math-7b-lora-r16_v2` |
 | **Adapter location** | `MyDrive/AIMO/checkpoints_v2/lora-final` |
 | **Config** | [`configs/sft_7b_v2.yaml`](../configs/sft_7b_v2.yaml) |
-| **Headline** | Conservative hyperparameters alone **did not** prevent catastrophic forgetting — they made it worse. Round 2 is below baseline on every benchmark we have full data for. The negative result rules out the "hyperparameter-aggressiveness" hypothesis from Round 1 and points toward training-format mismatch as the dominant cause. |
+| **Headline** | Conservative hyperparameters alone produced an **asymmetric** OOD result, not uniform degradation. AIME 2024 collapsed (16.7% → 3.3%) while AIME 2025 improved directionally (6.7% → 10.0%, within noise at n=30). val_200 dropped to 55.0% — below baseline. The result rules out simple "hyperparameter conservatism" as a sufficient fix and points to training-format mismatch as the actual cause. |
 
 ---
 
@@ -69,13 +69,15 @@ Round 2's result rules out (3): the gap got worse, not better. Round 3 should im
 | Benchmark | n | Baseline | Round 1 SFT | **Round 2 SFT** | Δ vs Baseline | Δ vs Round 1 |
 |---|---|---|---|---|---|---|
 | `val_200` (in-distribution) | 200 | 57.0% | 67.0% | **55.0%** | −2.0 | −12.0 |
-| AIME 2024 | 30 | 23.3% | 16.7% | **3.3%** | −20.0 | −13.4 |
-| AIME 2025 | _2/30 partial_ | 6.7% | 6.7% | _0/2_ | _insufficient_ | |
+| AIME 2024 (partial OOD) | 30 | 23.3% | 16.7% | **3.3%** | −20.0 | −13.4 |
+| AIME 2025 (clean OOD) | 30 | 6.7% | 6.7% | **10.0%** | +3.3 (n.s.) | +3.3 (n.s.) |
+| AIME combined | 60 | 15.0% | 11.7% | **6.7%** | −8.3 | −5.0 |
 
 Wilson 95% confidence intervals:
 
 - Round 2 `val_200`: 110/200 = 55.0% [48.0, 61.7] — overlaps with baseline's [53.6, 60.4]; clearly below Round 1's [63.6, 70.4]
 - Round 2 AIME_2024: 1/30 = 3.3% [0.6, 16.7] — barely doesn't overlap with baseline's [11.8, 40.9]; clearly below Round 1's [7.3, 33.6]
+- Round 2 AIME_2025: 3/30 = 10.0% [3.5, 25.6] — heavily overlaps with both baseline and Round 1 [1.6, 21.6]; the directional improvement is not statistically significant at this sample size
 
 ### Failure-mode breakdown
 
@@ -84,8 +86,8 @@ Wilson 95% confidence intervals:
 | `correct` | 110 | 55.0% |
 | `wrong_numeric` | 61 | 30.5% |
 | `wrong_nonnumeric` | 24 | 12.0% |
-| `truncated_no_box` | 2 | 1.0% |
 | `no_box` | 3 | 1.5% |
+| `truncated_no_box` | 2 | 1.0% |
 
 | Category (AIME 2024, n=30) | Count | % |
 |---|---|---|
@@ -94,19 +96,36 @@ Wilson 95% confidence intervals:
 | `wrong_nonnumeric` | 1 | 3.3% |
 | `truncated_no_box` | 1 | 3.3% |
 
-The `wrong_nonnumeric` rate is notably higher on Round 2 than Round 1 (12% vs much lower on val_200; ~3% on AIME). This category includes outputs whose `\boxed{...}` content failed numeric parsing — for example, the model emitting `\boxed{xx}` placeholders or raw expressions. This suggests Round 2 has partially lost the formatting discipline that Round 1 retained.
+| Category (AIME 2025, n=30) | Count | % |
+|---|---|---|
+| `correct` | 3 | 10.0% |
+| `wrong_numeric` | 22 | 73.3% |
+| `truncated_no_box` | 4 | 13.3% |
+| `no_box` | 1 | 3.3% |
+
+The `wrong_nonnumeric` rate is notably higher on Round 2 than Round 1 (12% on val_200; ~3% on AIME 2024; absent on AIME 2025). This category includes outputs whose `\boxed{...}` content failed numeric parsing — for example, the model emitting `\boxed{xx}` placeholders or raw expressions. This suggests Round 2 has partially lost the formatting discipline that Round 1 retained on in-distribution problems.
+
+The `truncated_no_box` rate is higher on AIME 2025 (13.3%) than AIME 2024 (3.3%), suggesting Round 2 generates longer chains on the genuinely-novel benchmark — possibly a reasonable signal of effort, possibly just verbosity.
 
 ---
 
 ## 5. What we learned
 
-**(a) Hyperparameter conservatism alone is insufficient.** The most direct way to read the result: smaller LoRA, lower LR, and bf16 — applied in isolation — did not preserve OOD capability. They reduced it further. The "aggressive hyperparameters caused forgetting" hypothesis from Round 1 is *not* the dominant explanation.
+**(a) Hyperparameter conservatism alone is insufficient.** Smaller LoRA, lower LR, and bf16 — applied in isolation — did not preserve OOD capability uniformly. The simple "aggressive hyperparameters caused forgetting" hypothesis from Round 1 is *not* a complete explanation.
 
-**(b) The likely dominant cause is the training/eval format mismatch.** Both rounds train on plain `"Problem: ... Solution:"` text and evaluate on Qwen's ChatML template. Round 1 (r=64, lr=2e-4) had enough adapter capacity and gradient signal to absorb this mismatch — it learned olympiad-specific reasoning despite training in the wrong format, and got +10 points in-distribution. Round 2 (r=16, lr=1e-5) had less capacity and a slower learning signal; it could not overcome the format mismatch, so it ended up perturbing the base model's alignment without compensating in-distribution gain. Worst of both worlds.
+**(b) The result is asymmetric across OOD benchmarks, and the asymmetry is informative.**
 
-**(c) The capacity/signal/mismatch trade-off is a real phenomenon.** Concretely: a larger adapter trained at a higher LR can succeed *despite* a format mismatch by force-fitting; a smaller adapter at a lower LR cannot, even though the smaller adapter is "safer" in principle. Conservatism is not free — it requires the rest of the pipeline (especially the format) to actually be correct.
+- **AIME 2024 collapsed** (16.7% → 3.3%). This is the benchmark where the base model already had measurable competence (23.3%) — likely from pretraining exposure. Round 2 disrupted that pre-existing capability more severely than Round 1 did, despite using "safer" hyperparameters.
+- **AIME 2025 directionally improved** (6.7% → 10.0%, within noise at n=30). This is the genuinely-novel benchmark where neither model had meaningful capability. Here, Round 2's smaller adapter was less able to specialize on the wrong (NuminaMath plain-text) distribution and so apparently retained or marginally improved generalization.
+- **`val_200` dropped** (67% → 55%). Smaller capacity + lower LR meant Round 2 simply learned less of NuminaMath's solution style — the very thing Round 1 successfully fit.
 
-**(d) `wrong_nonnumeric` rate is a useful signal of format degradation.** Round 2's elevated rate of malformed `\boxed{...}` outputs suggests the model has partially regressed on its base ChatML/`\boxed{}` convention. This is consistent with (b): less successful in-distribution learning, more disruption of base behavior.
+The combined picture: Round 2 is **less specialized** than Round 1. It overfits less but also learns less. Where the base model had pretraining-derived capability (AIME 2024, val_200), Round 2 disrupts more than it adds. Where the base had no capability (AIME 2025), the lower specialization may have been mildly beneficial — though the sample size precludes a confident claim.
+
+**(c) The likely dominant cause is the training/eval format mismatch.** Both rounds train on plain `"Problem: ... Solution:"` text and evaluate on Qwen's ChatML template. Round 1 (r=64, lr=2e-4) had enough adapter capacity to absorb this mismatch and force-fit useful in-distribution behavior. Round 2 (r=16, lr=1e-5) lacked the capacity to overcome the wrong format — it perturbed the base model's alignment without compensating gain on familiar problems. Both rounds therefore agree that the *format* needs to be correct; they differ only in how that mismatch manifests when adapter capacity changes.
+
+**(d) The capacity/signal/mismatch trade-off is real.** A larger adapter at a higher LR can succeed *despite* format mismatch by force-fitting. A smaller adapter at a lower LR cannot. Conservatism is not free — it requires the rest of the pipeline (especially the format) to be correct first.
+
+**(e) `wrong_nonnumeric` and `truncated_no_box` signal qualitative shifts.** Round 2's elevated `wrong_nonnumeric` rate on `val_200` (12% vs Round 1's much lower) suggests partial regression on the base `\boxed{}` convention. The elevated `truncated_no_box` rate on AIME 2025 (13%) suggests Round 2 produces longer chains on novel problems — consistent with the picture of less-confident, less-specialized output.
 
 ---
 
@@ -122,24 +141,7 @@ Predicted outcome of Round 3: matches or exceeds Round 1's `val_200` while reduc
 
 ---
 
-## 7. AIME 2025 — what's left to finish
-
-The AIME analysis run got 30 of 30 AIME_2024 problems but only 2 of 30 AIME_2025 problems before stopping. To finish:
-
-```bash
-python src/analyze_errors.py \
-    --model_path /content/drive/MyDrive/AIMO/checkpoints_v2/lora-final \
-    --config configs/sft_7b_v2.yaml \
-    --data_path data/processed/val_aime.jsonl \
-    --quantize \
-    --output /content/drive/MyDrive/AIMO/results/sft_v2_aime_errors.json
-```
-
-The resume support in [`src/analyze_errors.py`](../src/analyze_errors.py) skips problems already in the `.jsonl` (32 done), so this run only needs to handle the remaining 28 AIME_2025 problems. The qualitative read on the partial 2/30 is that Round 2 is at or below the AIME 2025 floor (where neither baseline nor Round 1 had measurable capability), so even completing the eval is unlikely to change the headline interpretation. The completed number is needed for the writeup table, not for the conclusion.
-
----
-
-## 8. Reproducibility
+## 7. Reproducibility
 
 - **Training:** `python src/train.py --config configs/sft_7b_v2.yaml`
 - **Evaluation (val_200):** see §7 (replace `val_aime.jsonl` with `val_200.jsonl`)

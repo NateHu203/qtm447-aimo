@@ -8,7 +8,7 @@
 % ---------- Table 1: Main Results ----------
 \begin{table}[t]
 \centering
-\caption{Accuracy of zero-shot baseline vs.\ SFT Round~1 (LoRA $r{=}64$, $\text{lr}{=}2\mathrm{e}{-}4$, fp16) and Round~2 (LoRA $r{=}16$, $\text{lr}{=}1\mathrm{e}{-}5$, bf16). All evaluations use ChatML formatting and \texttt{max\_new\_tokens}=2048. Parenthesized intervals are Wilson 95\% CIs. Round~2 AIME 2025 evaluation is incomplete (2/30 problems).}
+\caption{Accuracy of zero-shot baseline vs.\ SFT Round~1 (LoRA $r{=}64$, $\text{lr}{=}2\mathrm{e}{-}4$, fp16) and Round~2 (LoRA $r{=}16$, $\text{lr}{=}1\mathrm{e}{-}5$, bf16). All evaluations use ChatML formatting and \texttt{max\_new\_tokens}=2048. Parenthesized intervals are Wilson 95\% CIs.}
 \label{tab:main-results}
 \begin{tabular}{lcccc}
 \toprule
@@ -16,8 +16,8 @@
 \midrule
 val\_200 (in-distribution) & 200 & 57.0\% [53.6, 60.4] & \textbf{67.0\%} [63.6, 70.4] & 55.0\% [48.0, 61.7] \\
 AIME 2024 (partial OOD)    & 30  & 23.3\% [11.8, 40.9] & 16.7\% [7.3, 33.6]  & \phantom{0}3.3\% [0.6, 16.7]  \\
-AIME 2025 (clean OOD)      & 30  & \phantom{0}6.7\% [1.6, 21.6] & \phantom{0}6.7\% [1.6, 21.6] & \multicolumn{1}{c}{\textit{2/30 partial}} \\
-AIME combined              & 60  & 15.0\% [8.0, 26.2]  & 11.7\% [5.6, 22.0]  & \multicolumn{1}{c}{---}  \\
+AIME 2025 (clean OOD)      & 30  & \phantom{0}6.7\% [1.6, 21.6] & \phantom{0}6.7\% [1.6, 21.6] & 10.0\% [3.5, 25.6]  \\
+AIME combined              & 60  & 15.0\% [8.0, 26.2]  & 11.7\% [5.6, 22.0]  & \phantom{0}6.7\% [2.6, 15.9]  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -43,7 +43,7 @@ AIME combined              & 60  & 15.0\% [8.0, 26.2]  & 11.7\% [5.6, 22.0]  & \
 % ---------- Table 3: OOD Robustness ----------
 \begin{table}[t]
 \centering
-\caption{AIME accuracy split by year. The base model shows a 16.6-point advantage on AIME~2024 over AIME~2025, consistent with AIME 2024 appearing in Qwen's pre-training. Round~1 SFT eliminates 6.6 points of this pre-existing capability on AIME~2024 while leaving the near-floor 2025 performance unchanged. Round~2 SFT collapses AIME~2024 performance further (to 3.3\%), demonstrating that hyperparameter conservatism alone does not prevent forgetting.}
+\caption{AIME accuracy split by year reveals an asymmetric pattern. The base model shows a 16.6-point advantage on AIME~2024 over AIME~2025, consistent with AIME 2024 appearing in Qwen's pre-training. Round~1 SFT eliminates 6.6 points of this pre-existing capability on AIME~2024. Round~2 SFT collapses AIME~2024 further (to 3.3\%) while \textit{directionally improving} AIME~2025 (to 10.0\%, within noise at $n{=}30$) — suggesting Round 2's smaller adapter learned less of NuminaMath's specific style and so disrupted the model's pretrained AIME~2024 capability more, while marginally helping on the genuinely-novel benchmark.}
 \label{tab:robustness}
 \begin{tabular}{lccccr}
 \toprule
@@ -52,7 +52,7 @@ AIME combined              & 60  & 15.0\% [8.0, 26.2]  & 11.7\% [5.6, 22.0]  & \
 val\_200 (in-distribution) & 200 & 57.0\% & \textbf{67.0\%} & 55.0\% & $-2.0$ \\
 \midrule
 AIME 2024 (pre-cutoff)     & 30  & 23.3\% & 16.7\% & \phantom{0}3.3\% & $-20.0$ \\
-AIME 2025 (post-cutoff)    & 30  & \phantom{0}6.7\% & \phantom{0}6.7\% & \multicolumn{1}{c}{\textit{partial}} & --- \\
+AIME 2025 (post-cutoff)    & 30  & \phantom{0}6.7\% & \phantom{0}6.7\% & 10.0\% & $+3.3$~(n.s.) \\
 \bottomrule
 \end{tabular}
 \end{table}

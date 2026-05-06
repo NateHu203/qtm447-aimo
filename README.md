@@ -14,9 +14,9 @@ Under **corrected evaluation** (ChatML format, `max_new_tokens=2048`, numeric-to
 |---|---|---|---|---|
 | `val_200` (in-distribution) | 200 | 57.0% | **67.0%** | 55.0% |
 | AIME 2024 (partial pretraining overlap) | 30 | 23.3% | 16.7% | 3.3% |
-| AIME 2025 (clean OOD) | 30 | 6.7% | 6.7% | _2/30 partial_ |
+| AIME 2025 (clean OOD) | 30 | 6.7% | 6.7% | 10.0% (n.s.) |
 
-**Round 1** (LoRA r=64, lr=2e-4) gains +10 in-distribution but loses −6.7 on AIME 2024 (catastrophic forgetting on a benchmark where the base model already had competence). **Round 2** (r=16, lr=1e-5, bf16) tested whether conservative hyperparameters alone reduce the forgetting; the result is a clean negative — Round 2 is worse than both Round 1 and the baseline on every full-data benchmark. The likely dominant cause is the training/eval format mismatch (training uses plain text, evaluation uses ChatML); Round 1 had enough adapter capacity to absorb it, Round 2 did not. **The structural format fix is now the priority for any future round, not hyperparameter conservatism.**
+**Round 1** (LoRA r=64, lr=2e-4) gains +10 in-distribution but loses −6.7 on AIME 2024 (catastrophic forgetting on a benchmark where the base model already had competence). **Round 2** (r=16, lr=1e-5, bf16) tested whether conservative hyperparameters alone reduce the forgetting; the answer is asymmetric — Round 2 collapses AIME 2024 even further (3.3%) while directionally improving AIME 2025 (10.0%, within noise at n=30). The picture: Round 2 is *less specialized* than Round 1, which means less overfitting to NuminaMath's style but more disruption of pre-existing capability. **The likely dominant cause across both rounds is the training/eval format mismatch** (training uses plain text, evaluation uses ChatML); Round 1's larger adapter could absorb it by force-fitting, Round 2's could not. **The structural format fix is the priority for any future round, not hyperparameter conservatism.**
 
 Under the **original** (buggy) evaluation, the Round 1 model appeared to *regress* by 2 points on `val_200`. Three evaluation bugs (token truncation, strict string equality, prompt-format mismatch) had silently inflated failure counts for both models. Diagnostic inspection of 10 raw outputs surfaced this in 15 minutes of free compute. **A 12-point swing in measured effect came from the evaluation protocol alone.**
 

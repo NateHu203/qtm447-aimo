@@ -53,8 +53,7 @@ def plot_ood_comparison():
     benchmarks = ["val_200\n(in-dist)", "AIME 2024\n(OOD)", "AIME 2025\n(clean OOD)"]
     baseline = [57.0, 23.3, 6.7]
     round1 = [67.0, 16.7, 6.7]
-    # AIME 2025 Round 2 is incomplete (2/30); use None to skip plotting that bar.
-    round2 = [55.0, 3.3, None]
+    round2 = [55.0, 3.3, 10.0]
 
     x = np.arange(len(benchmarks))
     width = 0.27
@@ -62,20 +61,13 @@ def plot_ood_comparison():
     fig, ax = plt.subplots(figsize=(8.5, 5.0))
     b1 = ax.bar(x - width, baseline, width, label="Zero-shot baseline", color=GRAY)
     b2 = ax.bar(x, round1, width, label="SFT Round 1 (r=64)", color=EMORY_BLUE)
-    # Plot Round 2 bars only where data is complete
-    r2_x = [x[i] + width for i in range(len(round2)) if round2[i] is not None]
-    r2_vals = [v for v in round2 if v is not None]
-    b3 = ax.bar(r2_x, r2_vals, width, label="SFT Round 2 (r=16)", color=EMORY_GOLD)
+    b3 = ax.bar(x + width, round2, width, label="SFT Round 2 (r=16)", color=EMORY_GOLD)
 
     for bars in (b1, b2, b3):
         for bar in bars:
             h = bar.get_height()
             ax.text(bar.get_x() + bar.get_width() / 2, h + 0.8,
                     f"{h:.1f}%", ha="center", fontsize=10, fontweight="bold")
-
-    # Mark the missing Round 2 AIME 2025 bar
-    ax.text(x[2] + width, 2.0, "n/a", ha="center", fontsize=10,
-            color=GRAY, style="italic")
 
     ax.set_ylabel("Accuracy", fontsize=12)
     ax.set_title("OOD Generalization: In-Distribution vs. Held-Out AIME",
