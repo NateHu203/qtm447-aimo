@@ -98,7 +98,7 @@ The same evaluation procedure changes that made the baseline go from 36% to 57% 
 
 **(c) Plausible mechanisms for (b).** All three are concrete and testable in Round 2:
 
-- **Aggressive learning rate** (2e-4) on an already-instruct-tuned base overwrites the Qwen team's RLHF alignment (Dr. McAlister, personal communication).
+- **Aggressive learning rate** (2e-4) on an already-instruct-tuned base overwrites the Qwen team's RLHF alignment (Dr. McAlister).
 - **Full-sequence loss** instead of completion-only masking spends roughly half the gradient budget teaching the model to predict problem statements rather than solutions ([`src/dataset.py`](../src/dataset.py) implements masking but [`src/train.py`](../src/train.py) does not invoke it).
 - **Training-time format mismatch** (plain `"Problem: ... Solution:"` instead of Qwen's ChatML) trains the model in a context where its post-trained behavior, including its `\boxed{}` convention, does not activate.
 

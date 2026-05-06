@@ -196,4 +196,4 @@ Outputs PNGs to [results/plots/](results/plots/) and reads from JSON files in [r
 - **OOD benchmarks:** [Maxwell-Jia/AIME_2024](https://huggingface.co/datasets/Maxwell-Jia/AIME_2024) and [yentinglin/aime_2025](https://huggingface.co/datasets/yentinglin/aime_2025)
 - **Method (LoRA):** Hu et al., *LoRA: Low-Rank Adaptation of Large Language Models*, 2021
 - **Competition:** [AI Mathematical Olympiad — Progress Prize 3](https://www.kaggle.com/competitions/ai-mathematical-olympiad-progress-prize-3) (Kaggle)
-- **Methodological guidance** on chat templates, completion-only loss, and learning-rate selection: Dr. McAlister (Emory QTM 447), personal communication.
+- **Methodological guidance** on chat templates, completion-only loss, and learning-rate selection: Dr. McAlister (Emory QTM 447).
