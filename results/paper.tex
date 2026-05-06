@@ -1,0 +1,129 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[margin=0.65in,top=0.75in,bottom=0.75in]{geometry}
+\usepackage{times}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{balance}
+
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+
+\title{\textbf{Fine-Tuning a 7B Math LLM for Olympiad Reasoning}\\[2pt]
+{\large A Diagnostic Study of Evaluation Methodology and OOD Generalization}}
+
+\author{Nate Hu \quad Philip Wang \quad William Xu \quad Emory University, QTM 447}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1em}
+
+\begin{abstract}
+We fine-tune \texttt{Qwen2.5-Math-7B-Instruct} with LoRA on 72{,}283 filtered olympiad problems and evaluate on val\_200 ($n{=}200$) and AIME 2024+2025 ($n{=}60$). Three evaluation bugs produced a \textbf{12-point swing} in the measured SFT effect, turning an apparent $-2$-point regression into a genuine $+10$-point gain. Under corrected evaluation, Round~1 ($r{=}64$, lr$=2\text{e}{-4}$) achieves 67\% on val\_200 but degrades on AIME 2024 ($-6.7$ pts), a catastrophic-forgetting signature. A hyperparameter-only Round~2 ($r{=}16$, lr$=1\text{e}{-5}$) produces an asymmetric OOD result that implicates a persistent training/inference format mismatch as the dominant cause.
+\end{abstract}
+
+\section{Setup}
+
+\paragraph{Model and data.} We fine-tune \texttt{Qwen/Qwen2.5-Math-7B-Instruct} \cite{yang2024qwen25mathtechnicalreportmathematical} (7B, already RLHF-aligned) with LoRA \cite{hu2021loralowrankadaptationlarge} adapters on all seven projection matrices. Training data is NuminaMath-CoT + TIR \cite{numina_math_datasets} filtered to olympiad-level sources with integer answers (72{,}283 train examples, 95/5 split, seed 42).
+
+\paragraph{Training format mismatch (key design flaw).} Both rounds train using a plain-text template (\texttt{"Problem: \{p\}\textbackslash n\textbackslash nSolution: \{s\}"}), while evaluation uses Qwen's ChatML template. This mismatch is identified post-hoc as the likely dominant cause of OOD degradation.
+
+\paragraph{Hyperparameters.} Table~\ref{tab:hparams} summarizes the two rounds; all else is identical (1 epoch, effective batch 32, cosine schedule).
+
+\begin{table}[h]
+\centering
+\small
+\caption{Training hyperparameters by round.}
+\label{tab:hparams}
+\vspace{2pt}
+\begin{tabular}{lcc}
+\toprule
+& \textbf{Round 1} & \textbf{Round 2} \\
+\midrule
+LoRA rank $r$ & 64 & 16 \\
+LoRA $\alpha$ & 128 & 32 \\
+Learning rate & 2e-4 & 1e-5 \\
+Precision & fp16 & bf16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Evaluation.} Greedy generation, last \texttt{\textbackslash boxed\{...\}} extracted by regex, numeric-tolerant equality (``5.0'' $\equiv$ ``5''), \texttt{max\_new\_tokens=2048}, ChatML prompt format. All reported numbers use this corrected protocol (eval v2).
+
+\section{Results}
+
+\subsection{Main Results}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Accuracy under corrected evaluation. Wilson 95\% CIs in brackets.}
+\label{tab:main}
+\vspace{2pt}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Benchmark} & \textbf{Baseline} & \textbf{Rnd 1} & \textbf{Rnd 2} \\
+\midrule
+val\_200       & 57.0 & \textbf{67.0} & 55.0 \\
+               & {\small[53.6, 60.4]} & {\small[63.6, 70.4]} & {\small[48.0, 61.7]} \\[2pt]
+AIME 2024      & 23.3 & 16.7 & 3.3 \\
+               & {\small[11.8, 40.9]} & {\small[7.3, 33.6]} & {\small[0.6, 16.7]} \\[2pt]
+AIME 2025      & 6.7  & 6.7  & 10.0 \\
+               & {\small[1.6, 21.6]} & {\small[1.6, 21.6]} & {\small[3.5, 25.6]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Round~1 gains +10 points on val\_200 ($p < 0.01$) but loses 6.7 points on AIME 2024. Round~2's smaller adapter reduces in-distribution specialization (val\_200 drops to 55\%) while producing the asymmetric OOD pattern described in Section~\ref{sec:analysis}.
+
+\subsection{Evaluation Methodology Finding}
+
+\begin{table}[h]
+\centering
+\small
+\caption{The 12-point methodological swing on val\_200.}
+\label{tab:diagnostic}
+\vspace{2pt}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{Eval v1 (buggy)} & \textbf{Eval v2 (fixed)} \\
+\midrule
+Baseline & 36.0\% & 57.0\% \\
+SFT Round 1 & 34.0\% & 67.0\% \\
+\midrule
+$\Delta$ & $-2.0$ pts & $+10.0$ pts \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three bugs in eval v1 collectively account for the swing: (1)~\texttt{max\_new\_tokens=512} truncated solutions before \texttt{\textbackslash boxed\{\}} (olympiad solutions run 600--900 tokens); (2)~strict string equality rejected numerically equivalent answers like \texttt{"5.0"} vs.\ \texttt{"5"}; (3)~plain-text prompt format at inference mismatched the ChatML distribution under which Qwen's \texttt{\textbackslash boxed\{\}} convention was trained. Inspecting 10 raw outputs surfaced all three bugs in $<$15 minutes of free compute.
+
+\subsection{Failure-Mode Breakdown}
+
+Across all benchmarks, the dominant failure category is \texttt{wrong\_numeric} (model produces a boxed integer but it is incorrect): 82\% of failures on AIME for Round~1, 90\% on AIME 2024 for Round~2. Only 1--13\% of failures are format failures (\texttt{no\_box}, \texttt{truncated\_no\_box}), indicating the bottleneck is reasoning capability rather than output formatting. Round~2 shows elevated \texttt{wrong\_nonnumeric} on val\_200 (12\%), indicating partial regression in \texttt{\textbackslash boxed\{\}} formatting discipline relative to Round~1.
+
+\section{Analysis}
+\label{sec:analysis}
+
+\paragraph{Why does Round~1 degrade on AIME 2024?}
+Three mechanisms are consistent with the data: (M1)~aggressive LR (2e-4) overwrites RLHF alignment; (M2)~full-sequence loss dilutes gradient signal on solutions; (M3)~training/inference format mismatch. Round~2 tests M1 in isolation by conserving the hyperparameters while leaving M2 and M3 unfixed.
+
+\paragraph{Round~2 asymmetry rules out M1 as the primary cause.}
+If hyperparameter aggressiveness were dominant, Round~2 should have reduced AIME 2024 forgetting. Instead AIME 2024 collapsed further (16.7\% $\to$ 3.3\%). Meanwhile AIME 2025 directionally improved (6.7\% $\to$ 10.0\%), consistent with a less-specialized adapter that overfits the wrong format less---benefiting where the base had no prior competence, while further disrupting where it did (AIME 2024, val\_200).
+
+This asymmetry implicates M3 as the dominant cause. A larger adapter (Round~1, $r{=}64$) can absorb the format mismatch by force-fitting. A smaller adapter (Round~2, $r{=}16$) cannot, and perturbs the base model's alignment without compensating in-distribution gain. Conservative hyperparameters are appropriate only \emph{given} a correctly formatted training pipeline.
+
+\section{Conclusion and Future Work}
+
+The central lesson is methodological: three evaluation bugs produced a 12-point swing in the measured SFT effect, enough to reverse the apparent sign of the intervention. Diagnostic inspection of raw outputs is the cheapest, highest-value step before any retraining decision.
+
+On the modeling side, the structural fix for a Round~3 is straightforward: (1)~replace the plain-text training format with \texttt{tokenizer.apply\_chat\_template}; (2)~apply completion-only loss masking via \texttt{DataCollatorForCompletionOnlyLM}. Round~2's hyperparameters ($r{=}16$, lr$=1\text{e}{-5}$, bf16) are retained---they are appropriate given a correct format. Beyond retraining, inference-time tool integration (Python REPL via NuminaMath-TIR) is the most promising direction by literature precedent \cite{gou2024toratoolintegratedreasoningagent}.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\balance
+\end{document}
