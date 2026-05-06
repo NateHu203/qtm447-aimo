@@ -1,0 +1,9 @@
+{
+  "model_path": "Qwen/Qwen2.5-Math-7B-Instruct",
+  "data_path": "data/processed/val_200.jsonl",
+  "n_samples": 1,
+  "max_new_tokens": 2048,
+  "prompt_format": "chatml",
+  "accuracy": 0.57,
+  "timestamp": "2026-04-22T22:12:56.021577"
+}

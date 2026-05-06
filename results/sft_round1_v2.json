@@ -1,0 +1,9 @@
+{
+  "model_path": "./checkpoints/lora-final",
+  "data_path": "data/processed/val_200.jsonl",
+  "n_samples": 1,
+  "max_new_tokens": 2048,
+  "prompt_format": "chatml",
+  "accuracy": 0.67,
+  "timestamp": "2026-04-23T00:10:00.185377"
+}

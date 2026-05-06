@@ -25,16 +25,16 @@ GRAY = "#555555"
 
 
 def plot_main_results():
-    """Baseline vs SFT on val_200 (in-distribution)."""
-    labels = ["Zero-shot\nbaseline", "SFT Round 1\n(LoRA r=64)"]
-    accuracy = [57.0, 67.0]
-    colors = [GRAY, EMORY_BLUE]
+    """Baseline vs Round 1 SFT vs Round 2 SFT on val_200 (in-distribution)."""
+    labels = ["Zero-shot\nbaseline", "SFT Round 1\n(r=64, lr=2e-4)", "SFT Round 2\n(r=16, lr=1e-5)"]
+    accuracy = [57.0, 67.0, 55.0]
+    colors = [GRAY, EMORY_BLUE, EMORY_GOLD]
 
     fig, ax = plt.subplots(figsize=(8.5, 5.0))
-    bars = ax.bar(labels, accuracy, color=colors, width=0.45)
+    bars = ax.bar(labels, accuracy, color=colors, width=0.55)
 
     for bar, acc in zip(bars, accuracy):
-        ax.text(bar.get_x() + bar.get_width() / 2, acc + 1.0, f"{acc:.0f}%",
+        ax.text(bar.get_x() + bar.get_width() / 2, acc + 1.0, f"{acc:.1f}%",
                 ha="center", fontsize=14, fontweight="bold")
 
     ax.set_ylabel("Accuracy on val_200 (200 problems)", fontsize=12)
@@ -49,23 +49,33 @@ def plot_main_results():
 
 
 def plot_ood_comparison():
-    """Baseline vs SFT across val_200 (in-dist), AIME 2024, AIME 2025."""
+    """Baseline vs Round 1 vs Round 2 across val_200, AIME 2024, AIME 2025."""
     benchmarks = ["val_200\n(in-dist)", "AIME 2024\n(OOD)", "AIME 2025\n(clean OOD)"]
     baseline = [57.0, 23.3, 6.7]
-    sft = [67.0, 16.7, 6.7]
+    round1 = [67.0, 16.7, 6.7]
+    # AIME 2025 Round 2 is incomplete (2/30); use None to skip plotting that bar.
+    round2 = [55.0, 3.3, None]
 
     x = np.arange(len(benchmarks))
-    width = 0.35
+    width = 0.27
 
     fig, ax = plt.subplots(figsize=(8.5, 5.0))
-    b1 = ax.bar(x - width / 2, baseline, width, label="Zero-shot baseline", color=GRAY)
-    b2 = ax.bar(x + width / 2, sft, width, label="SFT Round 1", color=EMORY_BLUE)
+    b1 = ax.bar(x - width, baseline, width, label="Zero-shot baseline", color=GRAY)
+    b2 = ax.bar(x, round1, width, label="SFT Round 1 (r=64)", color=EMORY_BLUE)
+    # Plot Round 2 bars only where data is complete
+    r2_x = [x[i] + width for i in range(len(round2)) if round2[i] is not None]
+    r2_vals = [v for v in round2 if v is not None]
+    b3 = ax.bar(r2_x, r2_vals, width, label="SFT Round 2 (r=16)", color=EMORY_GOLD)
 
-    for bars in (b1, b2):
+    for bars in (b1, b2, b3):
         for bar in bars:
             h = bar.get_height()
             ax.text(bar.get_x() + bar.get_width() / 2, h + 0.8,
-                    f"{h:.1f}%", ha="center", fontsize=11, fontweight="bold")
+                    f"{h:.1f}%", ha="center", fontsize=10, fontweight="bold")
+
+    # Mark the missing Round 2 AIME 2025 bar
+    ax.text(x[2] + width, 2.0, "n/a", ha="center", fontsize=10,
+            color=GRAY, style="italic")
 
     ax.set_ylabel("Accuracy", fontsize=12)
     ax.set_title("OOD Generalization: In-Distribution vs. Held-Out AIME",
@@ -73,7 +83,7 @@ def plot_ood_comparison():
     ax.set_xticks(x)
     ax.set_xticklabels(benchmarks, fontsize=11)
     ax.set_ylim(0, 80)
-    ax.legend(loc="upper right", fontsize=11)
+    ax.legend(loc="upper right", fontsize=10)
     ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
     out = PLOTS_DIR / "ood_comparison.png"
